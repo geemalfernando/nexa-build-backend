@@ -38,10 +38,7 @@ function registerAiRoutes(app) {
     legacyHeaders: false,
   });
 
-  app.post(
-    "/ai/chat",
-    limiter,
-    asyncHandler(async (req, res) => {
+  const handler = asyncHandler(async (req, res) => {
       if (!env.OPENAI_API_KEY) {
         throw new HttpError(500, "Missing OPENAI_API_KEY on backend");
       }
@@ -105,8 +102,11 @@ function registerAiRoutes(app) {
 
       const text = extractAssistantText(json) || "Sorry — I couldn't generate a response.";
       res.json({ message: text });
-    })
-  );
+  });
+
+  // Support both `/ai/*` and `/api/ai/*` so clients can use either base path.
+  app.post("/ai/chat", limiter, handler);
+  app.post("/api/ai/chat", limiter, handler);
 }
 
 module.exports = { registerAiRoutes };
