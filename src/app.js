@@ -29,6 +29,10 @@ function parseOrigins(clientOrigin) {
 function createApp() {
   const app = express();
 
+  // Running behind Vercel/Proxies: required for correct IP detection and rate limiting.
+  // Otherwise `express-rate-limit` throws `ERR_ERL_UNEXPECTED_X_FORWARDED_FOR`.
+  app.set("trust proxy", 1);
+
   app.use(helmet());
   app.use(express.json({ limit: "1mb" }));
   app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
