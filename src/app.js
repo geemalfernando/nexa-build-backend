@@ -15,6 +15,7 @@ const { registerProjectRoutes } = require("./routes/projects");
 const { registerAllProjectsRoutes } = require("./routes/projectsAll");
 const { registerProjectStateRoutes } = require("./routes/projectState");
 const { registerProgressRoutes } = require("./routes/progress");
+const { registerAiRoutes } = require("./routes/ai");
 
 function parseOrigins(clientOrigin) {
   const raw = (clientOrigin || "").trim();
@@ -51,6 +52,9 @@ function createApp() {
       },
     });
   });
+
+  // AI routes should work even if DB is down, so mount them outside `/api` + `dbReady`.
+  registerAiRoutes(app);
 
   const authLimiter = rateLimit({
     windowMs: 60 * 1000,

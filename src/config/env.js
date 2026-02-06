@@ -22,5 +22,7 @@ module.exports = {
     DATABASE_URL: process.env.DATABASE_URL,
     JWT_SECRET: process.env.JWT_SECRET,
     CLIENT_ORIGIN: process.env.CLIENT_ORIGIN || "",
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    OPENAI_MODEL: process.env.OPENAI_MODEL || "gpt-4o-mini",
   },
 };

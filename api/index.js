@@ -17,7 +17,10 @@ async function ensureDb() {
 }
 
 module.exports = async (req, res) => {
-  await ensureDb();
+  const url = req?.url || "";
+  const skipDb = url.startsWith("/ai/") || url === "/health" || url.startsWith("/health?");
+  if (!skipDb) {
+    await ensureDb();
+  }
   return app(req, res);
 };
-
