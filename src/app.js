@@ -98,10 +98,19 @@ function createApp() {
     }
 
     const status = Number(err?.statusCode || 500);
-    const message = status >= 500 ? "Internal server error" : err?.message || "Error";
+    const isHttpError = err?.name === "HttpError";
 
-    if (env.NODE_ENV !== "production" && status >= 500) {
-      // Keep stack traces in dev to speed up iteration.
+    // By default, don't leak internal errors in production.
+    // For some controlled upstream errors (like OpenAI 502) we return the message to aid debugging.
+    const shouldExposeMessage =
+      status < 500 ||
+      (isHttpError && status === 502) ||
+      (isHttpError && status === 500 && typeof err?.message === "string" && err.message.startsWith("Missing "));
+
+    const message = shouldExposeMessage ? err?.message || "Error" : "Internal server error";
+
+    if (status >= 500) {
+      // Always log server errors; Vercel logs are the primary debugging surface in production.
       // eslint-disable-next-line no-console
       console.error(err);
     }
