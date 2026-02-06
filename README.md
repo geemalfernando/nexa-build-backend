@@ -17,6 +17,7 @@ cp .env.example .env
 Set:
 - `DATABASE_URL` (MongoDB connection string)
 - `JWT_SECRET` (long random string)
+- `CLIENT_ORIGIN` (optional; comma-separated allowed origins for CORS)
 
 ## MongoDB Atlas notes
 
@@ -33,6 +34,18 @@ npm run dev
 ```
 
 Health check: `GET http://localhost:5001/health` (or whatever you set in `PORT`)
+
+## Deploy to Vercel (Serverless)
+
+This repo includes `api/index.js` + `vercel.json` so Vercel routes all requests to the Express app.
+
+In Vercel → Project → Settings → Environment Variables, set:
+- `DATABASE_URL`
+- `JWT_SECRET`
+- `CLIENT_ORIGIN` (your Firebase URL, e.g. `https://nexa-build.web.app`)
+
+After deploy, health check:
+- `GET https://<your-backend>.vercel.app/health`
 
 ## Auth
 
