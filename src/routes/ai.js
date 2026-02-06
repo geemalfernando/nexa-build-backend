@@ -24,6 +24,15 @@ function extractAssistantText(json) {
   return parts.length ? parts.join("\n").trim() : null;
 }
 
+function extractGeminiText(json) {
+  const candidates = json?.candidates;
+  if (!Array.isArray(candidates) || !candidates.length) return null;
+  const parts = candidates[0]?.content?.parts;
+  if (!Array.isArray(parts)) return null;
+  const texts = parts.map((p) => (typeof p?.text === "string" ? p.text : "")).filter(Boolean);
+  return texts.length ? texts.join("\n").trim() : null;
+}
+
 function toRole(r) {
   const role = String(r || "").toLowerCase();
   if (role === "system" || role === "user" || role === "assistant") return role;
@@ -39,10 +48,6 @@ function registerAiRoutes(app) {
   });
 
   const handler = asyncHandler(async (req, res) => {
-      if (!env.OPENAI_API_KEY) {
-        throw new HttpError(500, "Missing OPENAI_API_KEY on backend");
-      }
-
       const body = req.body || {};
       const message = typeof body.message === "string" ? body.message.trim() : "";
       const history = Array.isArray(body.messages) ? body.messages : [];
@@ -74,6 +79,53 @@ function registerAiRoutes(app) {
         });
       }
 
+      // Prefer Gemini if configured, otherwise fall back to OpenAI.
+      if (env.GEMINI_API_KEY) {
+        const model = env.GEMINI_MODEL || "gemini-2.0-flash";
+
+        const transcript = [
+          `System: ${instructions}`,
+          ...input.map((m) => `${m.role === "assistant" ? "Assistant" : "User"}: ${m.content?.[0]?.text || ""}`),
+        ]
+          .filter(Boolean)
+          .join("\n");
+
+        const r = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-goog-api-key": requireEnv("GEMINI_API_KEY"),
+            },
+            body: JSON.stringify({
+              contents: [
+                {
+                  parts: [{ text: transcript }],
+                },
+              ],
+            }),
+          }
+        );
+
+        const json = await r.json().catch(() => null);
+        if (!r.ok) {
+          const msg =
+            typeof json?.error?.message === "string"
+              ? json.error.message
+              : `Gemini request failed (${r.status})`;
+          throw new HttpError(502, msg);
+        }
+
+        const text = extractGeminiText(json) || "Sorry — I couldn't generate a response.";
+        res.json({ message: text });
+        return;
+      }
+
+      if (!env.OPENAI_API_KEY) {
+        throw new HttpError(500, "Missing GEMINI_API_KEY or OPENAI_API_KEY on backend");
+      }
+
       const model = env.OPENAI_MODEL || "gpt-4o-mini";
 
       const r = await fetch("https://api.openai.com/v1/responses", {
@@ -93,10 +145,7 @@ function registerAiRoutes(app) {
 
       const json = await r.json().catch(() => null);
       if (!r.ok) {
-        const msg =
-          typeof json?.error?.message === "string"
-            ? json.error.message
-            : `OpenAI request failed (${r.status})`;
+        const msg = typeof json?.error?.message === "string" ? json.error.message : `OpenAI request failed (${r.status})`;
         throw new HttpError(502, msg);
       }
 
