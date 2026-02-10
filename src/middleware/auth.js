@@ -3,6 +3,9 @@ const { env, requireEnv } = require("../config/env");
 const { HttpError } = require("../utils/httpError");
 
 function authRequired(req, _res, next) {
+  // Let CORS preflight (OPTIONS) through without auth so the browser can get 2xx and then send the real request with the token.
+  if (req.method === "OPTIONS") return next();
+
   const header = req.headers.authorization || "";
   const [, token] = header.split(" ");
 
