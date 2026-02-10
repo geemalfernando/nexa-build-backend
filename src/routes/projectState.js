@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const { z } = require("zod");
 
 const { asyncHandler } = require("../utils/asyncHandler");
@@ -5,12 +6,48 @@ const { HttpError } = require("../utils/httpError");
 const { Project } = require("../models/Project");
 const { Room } = require("../models/Room");
 
+const customTemplateSchema = z
+  .object({
+    id: z.string().min(1),
+    name: z.string().trim().min(1).max(120).optional(),
+    category: z.string().trim().min(1).max(60).optional(),
+    shape: z.union([z.literal("box"), z.literal("cylinder"), z.literal("sphere")]).optional(),
+    color: z.string().trim().min(1).max(40).optional(),
+    dimensions: z
+      .object({
+        x: z.number().min(0.01).max(50),
+        y: z.number().min(0.01).max(50),
+        z: z.number().min(0.01).max(50),
+      })
+      .partial()
+      .optional(),
+    cylinder: z
+      .object({
+        radius: z.number().min(0.01).max(50),
+        height: z.number().min(0.01).max(50),
+      })
+      .partial()
+      .optional(),
+    sphere: z
+      .object({
+        radius: z.number().min(0.01).max(50),
+      })
+      .partial()
+      .optional(),
+  })
+  // Allow forward-compatible additions from the frontend without breaking saves.
+  .passthrough();
+
 const furnitureItemSchema = z.object({
   id: z.string().min(1),
   type: z.string().min(1),
   position: z.tuple([z.number(), z.number(), z.number()]),
   rotation: z.tuple([z.number(), z.number(), z.number()]).optional(),
   scale: z.tuple([z.number(), z.number(), z.number()]).optional(),
+  color: z.string().trim().min(1).max(40).optional(),
+  // Custom object instances
+  templateId: z.string().min(1).optional(),
+  custom: customTemplateSchema.optional(),
 });
 
 const floorPlanElementSchema = z.union([
@@ -86,6 +123,7 @@ const projectStateSchema = z.object({
   width: z.number().min(1).max(100).optional(),
   length: z.number().min(1).max(100).optional(),
   furniture: z.array(furnitureItemSchema).optional(),
+  customCatalog: z.array(customTemplateSchema).max(200).optional(),
   // Back-compat: older clients used a single `floorPlan`.
   floorPlan: floorPlanSchema.optional(),
   // New: multi-floor designs.
@@ -94,6 +132,9 @@ const projectStateSchema = z.object({
 });
 
 async function requireProjectMember(projectId, userId) {
+  if (!projectId || !mongoose.Types.ObjectId.isValid(projectId)) {
+    throw new HttpError(404, "Project not found");
+  }
   const project = await Project.findById(projectId);
   if (!project) throw new HttpError(404, "Project not found");
 

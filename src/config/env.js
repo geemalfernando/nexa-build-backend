@@ -26,5 +26,10 @@ module.exports = {
     OPENAI_MODEL: process.env.OPENAI_MODEL || "gpt-4o-mini",
     GEMINI_API_KEY: process.env.GEMINI_API_KEY,
     GEMINI_MODEL: process.env.GEMINI_MODEL || "gemini-2.0-flash",
+    // Ollama (self-hosted, no API key). Example: http://127.0.0.1:11434
+    OLLAMA_BASE_URL: process.env.OLLAMA_BASE_URL || "",
+    OLLAMA_MODEL: process.env.OLLAMA_MODEL || "llama3",
+    // If true, start the server without connecting to MongoDB (AI + /health still work).
+    SKIP_DB: String(process.env.SKIP_DB || "").toLowerCase() === "true",
   },
 };
